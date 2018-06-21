@@ -1,0 +1,3 @@
+1) add tests
+2) finish /version handler
+3) cron job for checking for new versions of prebid
