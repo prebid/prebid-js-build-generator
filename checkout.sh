@@ -21,5 +21,5 @@ for TAG in `git tag --sort=-version:refname | head -n $NUMBER_OF_PREVIOUS_VERSIO
     cd ../prebid_${TAG}
     git checkout ${TAG}
     npm install
-    gu lp build
+    gulp build
   done
