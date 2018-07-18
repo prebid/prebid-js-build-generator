@@ -15,7 +15,7 @@ git clone https://github.com/prebid/Prebid.js.git working_master
 cd working_master
 git pull
 
-for TAG in `git tag --sort=-version:refname | head -n $NUMBER_OF_PREVIOUS_VERSIONS`;
+for TAG in `git tag --sort=-creatordate | head -n $NUMBER_OF_PREVIOUS_VERSIONS`;
   do 
     git clone https://github.com/prebid/Prebid.js.git ../prebid_${TAG}
     cd ../prebid_${TAG}
