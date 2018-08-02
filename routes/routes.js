@@ -3,8 +3,13 @@ const path = require('path');
 const fs = require('fs');
 const uuid = require('../src/fastUuid');
 const semverRegex = require('semver-regex');
+const NodeCache = require( 'node-cache' );
+const cache = new NodeCache();
+const cacheKey = 'prebidVersions';
 
 const _prebidRootDir = './../prebid.js';
+const _prebidVersions = [];
+const _ttlSeconds = 60 * 60; // 1 hour
 
 const appRouter = function (app, gulp) {
 
@@ -52,10 +57,48 @@ const appRouter = function (app, gulp) {
   });
 
   /**
+   * Get a list of the supported download versions
+   */
+  app.get('/versions', function (req, res){
+    /*
+      example response:
+      {
+	      "versions": ["0.34.18", "1.17.0", "1.18.0", "1.20.0", "1.30.0"]
+      }
+    */
+    const directory = 'prebid.js';
+    const prebidPrefix = 'prebid_';
+
+    let prebidVersions = cache.get(cacheKey);
+    if(prebidVersions) {
+      console.log('Retrieved from cache');
+      res.send(getResponse(prebidVersions));
+    }
+    else{
+      prebidVersions = [];
+      console.log('Saving to cache');
+      fs.readdir(directory, (err, files) => {
+        files.forEach(file => {
+          if (file.startsWith(prebidPrefix)){
+            prebidVersions.push(file.replace(prebidPrefix, ''));
+          }
+        });
+        cache.set(cacheKey, prebidVersions, _ttlSeconds);
+        res.send(getResponse(prebidVersions));
+      })
+    }
+
+    function getResponse(versions) {
+      return JSON.stringify({ versions : versions});
+    }
+
+  });
+
+  /**
    * WIP: get a list of modules supported by a given version.
    * TODO: needs to support aliases. 
    */
-  app.get('/versions', function (req, res) {
+  app.get('/bidders', function (req, res) {
 
     /*
       example request:
