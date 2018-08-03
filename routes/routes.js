@@ -4,6 +4,7 @@ const fs = require('fs');
 const uuid = require('../src/fastUuid');
 const semverRegex = require('semver-regex');
 const NodeCache = require( 'node-cache' );
+const semverSort = require('semver-sort');
 const cache = new NodeCache();
 const cacheKey = 'prebidVersions';
 
@@ -83,6 +84,7 @@ const appRouter = function (app, gulp) {
             prebidVersions.push(file.replace(prebidPrefix, ''));
           }
         });
+        prebidVersions = semverSort.desc(prebidVersions);
         cache.set(cacheKey, prebidVersions, _ttlSeconds);
         res.send(getResponse(prebidVersions));
       })
