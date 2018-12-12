@@ -36,7 +36,7 @@ const appRouter = function (app, gulp) {
     });
     // for logging CSV
     logModules = modulesListStr.replace(/,/g, ';');
-    logInfo(req.body.company, req.body.version, logModules);
+    logInfo(req.body.version, logModules);
    
     // generate file from command line
     // gulp bundle --modules ${module_list} --bundleName prebid.${uuid}.js
@@ -160,10 +160,6 @@ const appRouter = function (app, gulp) {
   });
 
   function isValidRequest(req, res) {
-    if(!req.body.company){
-      logError(res, 'missing company');
-      return false;
-    }
     if(!req.body.modules || req.body.modules.length < 1 ){
       logError(res, 'missing module list');
       return false;
@@ -193,7 +189,7 @@ const appRouter = function (app, gulp) {
     return semverRegex().test(version);
   }
 
-  function logInfo(company, version, moduleString) {
+  function logInfo(version, moduleString) {
     var info = 'dataCapture,' ;
     info += Date.now() + ',';
     [...arguments].forEach(arg => {
