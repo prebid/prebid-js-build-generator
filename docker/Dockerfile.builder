@@ -1,10 +1,8 @@
-FROM node:11
+FROM node:11-alpine
 
 RUN npm install -g gulp gulp-cli
 
-RUN apt-get update \
- && apt-get install -y git \
- && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache bash git
 
 WORKDIR /app
 
