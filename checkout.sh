@@ -35,7 +35,8 @@ for TAG in `git tag --sort=-creatordate | head -n $NUMBER_OF_PREVIOUS_VERSIONS`
       then 
         echo "$DIR_NAME already installed"
       else
-        git clone https://github.com/prebid/Prebid.js.git $DIR_NAME
+        echo "Copying working_master to $DIR_NAME"
+        cp -R . $DIR_NAME
         cd $DIR_NAME
         git checkout ${TAG}
         npm install
