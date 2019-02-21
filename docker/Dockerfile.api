@@ -1,14 +1,17 @@
+FROM node:11 AS build
+
+COPY package*.json ./
+RUN npm install --production
+
 FROM node:11
 
 RUN npm install -g gulp gulp-cli
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install --production
-
 VOLUME /app/prebid.js
 
+COPY --from=build ./node_modules ./node_modules
 COPY . .
 
 EXPOSE 3000
