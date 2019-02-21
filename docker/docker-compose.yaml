@@ -2,8 +2,8 @@ version: '3.7'
 services:
   api:
     build:
-      context: .
-      dockerfile: Dockerfile.api
+      context: ..
+      dockerfile: docker/Dockerfile.api
     image: prebid/pbjs-bundle-service-api:latest
     volumes:
 #      - build-cache-volume:/app/prebid.js
@@ -13,8 +13,8 @@ services:
     init: true
   builder:
     build:
-      context: .
-      dockerfile: Dockerfile.builder
+      context: ..
+      dockerfile: docker/Dockerfile.builder
     image: prebid/pbjs-bundle-service-builder:latest
     volumes:
 #      - build-cache-volume:/app/prebid.js
