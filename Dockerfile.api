@@ -1,0 +1,16 @@
+FROM node:11
+
+RUN npm install -g gulp gulp-cli
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --production
+
+VOLUME /app/prebid.js
+
+COPY . .
+
+EXPOSE 3000
+
+CMD [ "node", "app.js" ]

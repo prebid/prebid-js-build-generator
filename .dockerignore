@@ -1,0 +1,6 @@
+.*
+README.md
+*.sh
+!checkout.sh
+todo.txt
+Dockerfile
