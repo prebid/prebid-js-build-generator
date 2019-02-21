@@ -14,11 +14,18 @@ if [ ! -d "$PREBID_DIR" ]
   then
     mkdir $PREBID_DIR
     cd $PREBID_DIR
-    git clone https://github.com/prebid/Prebid.js.git working_master
   else
     cd $PREBID_DIR
 fi
-cd working_master
+
+if [ ! -d working_master ]
+  then
+    git clone https://github.com/prebid/Prebid.js.git working_master
+    cd working_master
+  else
+    cd working_master
+fi
+
 git pull
 
 for TAG in `git tag --sort=-creatordate | head -n $NUMBER_OF_PREVIOUS_VERSIONS`
