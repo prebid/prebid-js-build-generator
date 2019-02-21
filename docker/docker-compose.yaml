@@ -19,5 +19,14 @@ services:
     volumes:
 #      - build-cache-volume:/app/prebid.js
       - ./prebid.js:/app/prebid.js
+  cron:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.cron
+    image: prebid/pbjs-bundle-service-cron:latest
+    volumes:
+#      - build-cache-volume:/app/prebid.js
+      - ./prebid.js:/app/prebid.js
+    init: true
 #volumes:
 #  build-cache-volume:
