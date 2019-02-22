@@ -6,8 +6,6 @@ API that generates a prebid.js bundle.
 Send a POST request to the `/download` service:
 ```
 {
-	"email": "name@mail.com",
-	"company": "company Name",
 	"modules": ["smartadserverBidAdapter", "googleAnalyticsAdapter"],
 	"version": "1.12.0"
 }
