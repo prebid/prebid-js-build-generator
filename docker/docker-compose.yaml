@@ -6,8 +6,7 @@ services:
       dockerfile: docker/Dockerfile.api
     image: prebid/pbjs-bundle-service-api:latest
     volumes:
-#      - build-cache-volume:/app/prebid.js
-      - ./prebid.js:/app/prebid.js
+      - build-cache-volume:/app/prebid.js
     ports:
       - "3000:3000"
     init: true
@@ -17,8 +16,7 @@ services:
       dockerfile: docker/Dockerfile.builder
     image: prebid/pbjs-bundle-service-builder:latest
     volumes:
-#      - build-cache-volume:/app/prebid.js
-      - ./prebid.js:/app/prebid.js
+      - build-cache-volume:/app/prebid.js
     init: true
-#volumes:
-#  build-cache-volume:
+volumes:
+  build-cache-volume:
