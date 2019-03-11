@@ -1,0 +1,364 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy a service on AWS ECS, hosted in a public subnet and accessible via a public Application Load Balancer.
+Parameters:
+  NetworkStackName:
+    Type: String
+    Default: prebid-network-prod
+    Description: The name of the parent networking stack that you created. Necessary
+      to locate and reference resources created by that stack.
+  ECSAMI:
+    Description: AMI ID
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues: [t2.micro, t2.small, t2.medium, t2.large, m3.medium, m3.large,
+      m3.xlarge, m3.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge, m4.10xlarge,
+      c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge, c3.large, c3.xlarge,
+      c3.2xlarge, c3.4xlarge, c3.8xlarge, r3.large, r3.xlarge, r3.2xlarge, r3.4xlarge,
+      r3.8xlarge, i2.xlarge, i2.2xlarge, i2.4xlarge, i2.8xlarge]
+    ConstraintDescription: Instance type for container instances.
+  EcsInstanceRole:
+    Type: String
+    Default: ecsInstanceRole
+    Description: An IAM role to give the container instances
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the ECS instances
+  TaskName:
+    Type: String
+    Default: pbjs-bundle-service-task-def
+    Description: A name for the task definition
+  ApiContainerName:
+    Type: String
+    Default: api
+    Description: A name for the API container
+  BuilderContainerName:
+    Type: String
+    Default: builder
+    Description: A name for the builder container
+  ServiceName:
+    Type: String
+    Default: pbjs-bundle-service-service
+    Description: A name for the service
+  ApiImageUrl:
+    Type: String
+    Default: prebid/pbjs-bundle-service-api:latest
+    Description: The url of a docker image that contains the API application process that
+      will handle the traffic for this service
+  BuilderImageUrl:
+    Type: String
+    Default: prebid/pbjs-bundle-service-builder:latest
+    Description: The url of a docker image that contains the builder application process that
+      will pre-build PBJS tags
+  ApiContainerPort:
+    Type: Number
+    Default: 3000
+    Description: What port number the application inside the docker container is binding to
+  TaskCpu:
+    Type: Number
+    Default: 1024
+    AllowedValues:
+      - 256
+      - 512
+      - 1024
+      - 2048
+      - 4096
+    Description: How much CPU to give the task. 1024 is 1 CPU
+  TaskMemory:
+    Type: Number
+    Default: 980
+    AllowedValues:
+      - 512
+      - 980
+      - 1024
+      - 2048
+      - 3072
+      - 4096
+      - 5120
+      - 6144
+      - 7168
+      - 8192
+      - 16384
+    Description: How much memory in megabytes to give the task
+  ApiContainerCpu:
+    Type: Number
+    Default: 512
+    AllowedValues:
+      - 256
+      - 512
+      - 1024
+      - 2048
+      - 4096
+    Description: How much CPU to give the container. 1024 is 1 CPU
+  BuilderContainerCpu:
+    Type: Number
+    Default: 512
+    AllowedValues:
+      - 256
+      - 512
+      - 1024
+      - 2048
+      - 4096
+    Description: How much CPU to give the container. 1024 is 1 CPU
+  ApiContainerMemory:
+    Type: Number
+    Default: 512
+    AllowedValues:
+      - 512
+      - 1024
+      - 2048
+      - 3072
+      - 4096
+      - 5120
+      - 6144
+      - 7168
+      - 8192
+      - 16384
+    Description: How much memory in megabytes to give the container
+  BuilderContainerMemory:
+    Type: Number
+    Default: 512
+    AllowedValues:
+      - 512
+      - 1024
+      - 2048
+      - 3072
+      - 4096
+      - 5120
+      - 6144
+      - 7168
+      - 8192
+      - 16384
+    Description: How much memory in megabytes to give the container
+  DesiredCount:
+    Type: Number
+    Default: 2
+    Description: How many copies of the service task to run
+  TaskExecutionRole:
+    Type: String
+    Default: ecsTaskExecutionRole
+    Description: An IAM role to give the tasks for pulling and container images and publishing container logs to Amazon
+      CloudWatch
+
+Mappings:
+  Subnets:
+    VPC:
+      ALBName: 'pbjs-bundle-service-alb'
+      TargetGroupName: 'pbjs-bundle-service-target-group'
+
+Resources:
+  # Container instances
+  ContainerInstanceOne:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref ECSAMI
+      KeyName: !Ref KeyName
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref EcsInstanceRole
+      SubnetId:
+        Fn::ImportValue:
+          !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetOne']]
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            # Set any ECS agent configuration options
+            echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+            echo 'ECS_INSTANCE_ATTRIBUTES={"app":"pbjs-bundle-service"}' >> /etc/ecs/ecs.config
+          - ECSCluster:
+              Fn::ImportValue:
+                !Join [':', [!Ref 'NetworkStackName', 'ClusterName']]
+  ContainerInstanceTwo:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref ECSAMI
+      KeyName: !Ref KeyName
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref EcsInstanceRole
+      SubnetId:
+        Fn::ImportValue:
+          !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetTwo']]
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            # Set any ECS agent configuration options
+            echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+            echo 'ECS_INSTANCE_ATTRIBUTES={"app":"pbjs-bundle-service"}' >> /etc/ecs/ecs.config
+          - ECSCluster:
+              Fn::ImportValue:
+                !Join [':', [!Ref 'NetworkStackName', 'ClusterName']]
+
+  # Load Balancer
+  ALBSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the public facing load balancer
+      VpcId:
+        Fn::ImportValue:
+          !Join [':', [!Ref 'NetworkStackName', 'VPCId']]
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
+      Subnets:
+        - Fn::ImportValue:
+            !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetOne']]
+        - Fn::ImportValue:
+            !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetTwo']]
+      SecurityGroups: [!Ref 'ALBSG']
+      Tags:
+        - Key: 'Name'
+          Value: !FindInMap ['Subnets', 'VPC', 'ALBName']
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      Name: !FindInMap ['Subnets', 'VPC', 'TargetGroupName']
+      Port: 80
+      Protocol: HTTP
+      TargetType: ip
+      VpcId:
+        Fn::ImportValue:
+          !Join [':', [!Ref 'NetworkStackName', 'VPCId']]
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - ALB
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: HTTP
+
+  # Security Group for ECS Tasks
+  ECSContainerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS containers
+      VpcId:
+        Fn::ImportValue:
+          !Join [':', [!Ref 'NetworkStackName', 'VPCId']]
+  ECSContainerSGIngressFromALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from the ALB
+      GroupId: !Ref ECSContainerSG
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref ALBSG
+
+  # Task definition
+  TaskCloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['', ['/ecs/', !Ref 'TaskName']]
+      RetentionInDays: 365
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref 'TaskName'
+      Cpu: !Ref 'TaskCpu'
+      Memory: !Ref 'TaskMemory'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - EC2
+      ExecutionRoleArn: !Join ['', [ !Sub 'arn:aws:iam::${AWS::AccountId}:role/', !Ref 'TaskExecutionRole']]
+      ContainerDefinitions:
+        - Name: !Ref 'ApiContainerName'
+          Essential: true
+          Cpu: !Ref 'ApiContainerCpu'
+          Memory: !Ref 'ApiContainerMemory'
+          Image: !Ref 'ApiImageUrl'
+          PortMappings:
+            - ContainerPort: !Ref 'ApiContainerPort'
+          MountPoints:
+            - SourceVolume: build-cache-volume
+              ContainerPath: /app/prebid.js
+          LinuxParameters:
+            InitProcessEnabled: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref 'TaskCloudWatchLogGroup'
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: 'ecs'
+        - Name: !Ref 'BuilderContainerName'
+          Essential: true
+          Cpu: !Ref 'BuilderContainerCpu'
+          Memory: !Ref 'BuilderContainerMemory'
+          Image: !Ref 'BuilderImageUrl'
+          MountPoints:
+            - SourceVolume: build-cache-volume
+              ContainerPath: /app/prebid.js
+          LinuxParameters:
+            InitProcessEnabled: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref 'TaskCloudWatchLogGroup'
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: 'ecs'
+      Volumes:
+        - Name: build-cache-volume
+          Host:
+            SourcePath: /app/prebid.js
+
+  # Service
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ContainerInstanceOne
+      - ContainerInstanceTwo
+      - ALBListener
+    Properties:
+      ServiceName: !Ref 'ServiceName'
+      Cluster:
+        Fn::ImportValue:
+          !Join [':', [!Ref 'NetworkStackName', 'ClusterName']]
+      LaunchType: EC2
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DesiredCount: !Ref 'DesiredCount'
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          SecurityGroups:
+            - !Ref ECSContainerSG
+          Subnets:
+            - Fn::ImportValue:
+                !Join [':', [!Ref 'NetworkStackName', 'PrivateSubnetOne']]
+            - Fn::ImportValue:
+                !Join [':', [!Ref 'NetworkStackName', 'PrivateSubnetTwo']]
+      TaskDefinition: !Ref 'TaskDefinition'
+      LoadBalancers:
+        - ContainerName: !Ref 'ApiContainerName'
+          ContainerPort: !Ref 'ApiContainerPort'
+          TargetGroupArn: !Ref TargetGroup
+      PlacementConstraints:
+        - Type: memberOf
+          Expression: attribute:app == pbjs-bundle-service
+      PlacementStrategies:
+        - Type: spread
+          Field: attribute:ecs.availability-zone
+        - Type: spread
+          Field: instanceId
+
+Outputs:
+  ExternalUrl:
+    Description: The url of the load balancer
+    Value: !Join ['', ['http://', !GetAtt 'ALB.DNSName']]
