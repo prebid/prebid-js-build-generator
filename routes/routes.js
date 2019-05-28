@@ -80,8 +80,13 @@ const appRouter = function (app, gulp) {
       console.log('Saving to cache');
       fs.readdir(directory, (err, files) => {
         files.forEach(file => {
-          if (file.startsWith(prebidPrefix)){
-            prebidVersions.push(file.replace(prebidPrefix, ''));
+          if (file.startsWith("prebid_")){   // validate filename
+            var f=file.replace("prebid_", '');
+            var v=f.split(".");
+	    // consider it valid only if there are 3 fields
+            if (v.length==3) {
+                prebidVersions.push(file.replace("prebid_", ''));
+            }
           }
         });
         prebidVersions = semverSort.desc(prebidVersions);
