@@ -40,8 +40,6 @@ for TAG in `git tag --sort=-creatordate | head -n $NUMBER_OF_PREVIOUS_VERSIONS`
         cd $DIR_NAME
         git checkout ${TAG}
         npm install
-        ## work around until https://github.com/peerigon/parse-domain/pull/39 is released. 
-        npm install pvdlg/parse-domain#overwrite-tries --save
         gulp build 
         echo "$DIR_NAME installed"
       fi
