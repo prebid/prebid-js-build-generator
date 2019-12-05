@@ -237,6 +237,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::Listener
     DependsOn:
       - ALB
+      - TargetGroup
     Properties:
       DefaultActions:
         - Type: forward
