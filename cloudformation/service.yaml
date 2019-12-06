@@ -142,12 +142,14 @@ Parameters:
     Default: ecsTaskExecutionRole
     Description: An IAM role to give the tasks for pulling and container images and publishing container logs to Amazon
       CloudWatch
+  LoadBalancerCertificateId:
+    Type: String
+    Default: ''
+    Description: Id of the pre-uploaded (or pre-requested) SSL certificate from ACM (Amazon Certificate Manager).
+      That is, it is a last part of the Certificate ARN, for example "arn:aws:acm:us-east-1:123456789123:certificate/>this_is_the_id<"
 
-Mappings:
-  Subnets:
-    VPC:
-      ALBName: 'pbjs-bundle-service-alb'
-      TargetGroupName: 'pbjs-bundle-service-target-group'
+Conditions:
+  HasLoadBalancerCertificateId: !Not [!Equals [!Ref LoadBalancerCertificateId, '']]
 
 Resources:
   # Container instances
@@ -205,6 +207,10 @@ Resources:
           IpProtocol: tcp
           FromPort: 80
           ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
   ALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -220,20 +226,20 @@ Resources:
       SecurityGroups: [!Ref 'ALBSG']
       Tags:
         - Key: 'Name'
-          Value: !FindInMap ['Subnets', 'VPC', 'ALBName']
+          Value: !Join ['-', [!Ref 'AWS::StackName', 'alb']]
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckPath: /health
       HealthCheckProtocol: HTTP
-      Name: !FindInMap ['Subnets', 'VPC', 'TargetGroupName']
+      Name: !Join ['-', [!Ref 'AWS::StackName', 'tg']]
       Port: 80
       Protocol: HTTP
       TargetType: ip
       VpcId:
         Fn::ImportValue:
           !Join [':', [!Ref 'NetworkStackName', 'VPCId']]
-  ALBListener:
+  HttpListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     DependsOn:
       - ALB
@@ -245,6 +251,21 @@ Resources:
       LoadBalancerArn: !Ref ALB
       Port: 80
       Protocol: HTTP
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: HasLoadBalancerCertificateId
+    DependsOn:
+      - ALB
+      - TargetGroup
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref ALB
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Join ['', [ !Sub 'arn:aws:acm:${AWS::Region}:${AWS::AccountId}:certificate/', !Ref LoadBalancerCertificateId]]
 
   # Security Group for ECS Tasks
   ECSContainerSG:
@@ -325,7 +346,8 @@ Resources:
     DependsOn:
       - ContainerInstanceOne
       - ContainerInstanceTwo
-      - ALBListener
+      - HttpListener
+      - HttpsListener
     Properties:
       ServiceName: !Ref 'ServiceName'
       Cluster:
