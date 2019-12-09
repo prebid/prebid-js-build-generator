@@ -347,7 +347,6 @@ Resources:
       - ContainerInstanceOne
       - ContainerInstanceTwo
       - HttpListener
-      - HttpsListener
     Properties:
       ServiceName: !Ref 'ServiceName'
       Cluster:
