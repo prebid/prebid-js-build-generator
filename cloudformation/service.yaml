@@ -152,17 +152,17 @@ Conditions:
   HasLoadBalancerCertificateId: !Not [!Equals [!Ref LoadBalancerCertificateId, '']]
 
 Resources:
-  # Container instances
-  ContainerInstanceOne:
-    Type: AWS::EC2::Instance
+  # Auto scaling group
+  LaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
+      LaunchConfigurationName: !Join ['-', [!Ref 'AWS::StackName', 'lc']]
       ImageId: !Ref ECSAMI
       KeyName: !Ref KeyName
       InstanceType: !Ref InstanceType
       IamInstanceProfile: !Ref EcsInstanceRole
-      SubnetId:
-        Fn::ImportValue:
-          !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetOne']]
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
       UserData:
         Fn::Base64: !Sub
           - |
@@ -173,26 +173,31 @@ Resources:
           - ECSCluster:
               Fn::ImportValue:
                 !Join [':', [!Ref 'NetworkStackName', 'ClusterName']]
-  ContainerInstanceTwo:
-    Type: AWS::EC2::Instance
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      ImageId: !Ref ECSAMI
-      KeyName: !Ref KeyName
-      InstanceType: !Ref InstanceType
-      IamInstanceProfile: !Ref EcsInstanceRole
-      SubnetId:
+      AutoScalingGroupName: !Join ['-', [!Ref 'AWS::StackName', 'asg']]
+      LaunchConfigurationName: !Ref LaunchConfig
+      DesiredCapacity: !Ref DesiredCount
+      MinSize: !Ref DesiredCount
+      MaxSize: 4
+      VPCZoneIdentifier:
+        - Fn::ImportValue:
+            !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetOne']]
+        - Fn::ImportValue:
+            !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetTwo']]
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SSH access to instances of auto-scaling group
+      VpcId:
         Fn::ImportValue:
-          !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetTwo']]
-      UserData:
-        Fn::Base64: !Sub
-          - |
-            #!/bin/bash
-            # Set any ECS agent configuration options
-            echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
-            echo 'ECS_INSTANCE_ATTRIBUTES={"app":"pbjs-bundle-service"}' >> /etc/ecs/ecs.config
-          - ECSCluster:
-              Fn::ImportValue:
-                !Join [':', [!Ref 'NetworkStackName', 'ClusterName']]
+          !Join [':', [!Ref 'NetworkStackName', 'VPCId']]
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
 
   # Load Balancer
   ALBSG:
@@ -344,8 +349,6 @@ Resources:
   Service:
     Type: AWS::ECS::Service
     DependsOn:
-      - ContainerInstanceOne
-      - ContainerInstanceTwo
       - HttpListener
     Properties:
       ServiceName: !Ref 'ServiceName'
