@@ -44,7 +44,13 @@ const appRouter = function (app, gulp) {
       const prebidDownloadFilePath = path.resolve(prebidPath, 'build/dist', fileName);
       console.log(output);
       if(fs.existsSync(prebidDownloadFilePath)) {
-        res.download(prebidDownloadFilePath);
+        res.download(prebidDownloadFilePath, function (err) {
+          if (err) {
+            res.end();
+          } else {
+            fs.unlinkSync(prebidDownloadFilePath);
+          }
+        });
       }
       else {
         res.send(JSON.stringify({
