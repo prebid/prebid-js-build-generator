@@ -37,7 +37,7 @@ const appRouter = function (app, gulp) {
     // for logging CSV
     logModules = modulesListStr.replace(/,/g, ';');
     logInfo(req.body.version, logModules);
-   
+
     // generate file from command line
     // gulp bundle --modules ${module_list} --bundleName prebid.${uuid}.js
     runCmd.runCmd('gulp', ['--cwd', prebidPath, 'bundle', '--modules', modulesListStr, '--bundleName', fileName], function(output) {
@@ -48,7 +48,9 @@ const appRouter = function (app, gulp) {
           if (err) {
             res.end();
           } else {
-            fs.unlinkSync(prebidDownloadFilePath);
+            fs.unlink(prebidDownloadFilePath, function (err) {
+              if (err) return console.log(err);
+            });
           }
         });
       }
@@ -59,7 +61,7 @@ const appRouter = function (app, gulp) {
           }
         ));
       }
-      
+
     })
   });
 
@@ -109,7 +111,7 @@ const appRouter = function (app, gulp) {
 
   /**
    * WIP: get a list of modules supported by a given version.
-   * TODO: needs to support aliases. 
+   * TODO: needs to support aliases.
    */
   app.get('/bidders', function (req, res) {
 
@@ -137,7 +139,7 @@ const appRouter = function (app, gulp) {
     const analytics = [];
     const modules = [];
     const directory = `prebid.js/prebid_${req.query.id}/modules/`;
-    
+
     fs.readdir(directory, (err, files) => {
       if(err) {
         res.send(JSON.stringify({error : 'invalid version specified'}));
@@ -166,8 +168,8 @@ const appRouter = function (app, gulp) {
 
       res.send(JSON.stringify(response));
     })
-    
-  
+
+
   });
 
   function isValidRequest(req, res) {
