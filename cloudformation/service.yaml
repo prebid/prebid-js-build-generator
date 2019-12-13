@@ -329,6 +329,13 @@ Resources:
           Cpu: !Ref 'BuilderContainerCpu'
           Memory: !Ref 'BuilderContainerMemory'
           Image: !Ref 'BuilderImageUrl'
+          Environment:
+            - Name: PERIODIC_BUILD_VERSIONS_NUM
+              Value: 5
+            - Name: INITIAL_BUILD_VERSIONS_NUM
+              Value: 20
+            - Name: KEEP_LATEST_VERSIONS_NUM
+              Value: 20
           MountPoints:
             - SourceVolume: build-cache-volume
               ContainerPath: /app/prebid.js
