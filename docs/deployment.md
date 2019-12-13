@@ -1,18 +1,3 @@
-# Packaging instructions
-This project allows to package the application in the Docker images out-of-the-box. Run the 
-following commands to build the images (you will need [Docker](https://www.docker.com/) installed of course):
-```shell script
-docker build -t prebid/pbjs-bundle-service-api:latest -f docker/Dockerfile.api .
-docker build -t prebid/pbjs-bundle-service-builder:latest -f docker/Dockerfile.builder .
-```
-
-Alternatively you can use a helper script for this purpose (should be run from the project directory):
-```shell script
-docker/build.sh
-```
-
-This will build the images locally and tag them as `latest`.
-
 # Deployment instructions
 In order to get the application running in AWS ECS you will need:
 - Create an [AWS ECR](https://aws.amazon.com/ecr/) repositories in single region of choice
