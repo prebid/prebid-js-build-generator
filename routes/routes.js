@@ -161,7 +161,13 @@ const appRouter = function (app, gulp) {
       res.send(JSON.stringify(response));
     })
     
+  });
   
+  /**
+   * A health monitor endpoint that returns 200 OK.
+   */
+  app.get('/health', function(req, res) {
+    res.status(200).send('OK');
   });
 
   function isValidRequest(req, res) {
