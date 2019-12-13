@@ -14,7 +14,7 @@ CURRENT_TIME=$(date +%s)
 for DIR in prebid.js/prebid_*;
   do
     echo "checking $DIR"
-    BUNDLE_DIR="${DIR}/build/dist/*"
+    BUNDLE_DIR="${DIR}/build/dist/prebid.*.js"
     for FILE in $BUNDLE_DIR;
       do
       FILE_LAST_MODIFIED=$(stat -c%Y $FILE)
