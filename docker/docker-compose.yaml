@@ -17,6 +17,8 @@ services:
     image: prebid/pbjs-bundle-service-builder:latest
     volumes:
       - build-cache-volume:/app/prebid.js
+    environment:
+      INITIAL_BUILD_VERSIONS_NUM: 2
     init: true
 volumes:
   build-cache-volume:
