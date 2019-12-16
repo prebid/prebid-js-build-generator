@@ -13,7 +13,7 @@ WORKDIR /app
 
 VOLUME /app/prebid.js
 
-RUN echo "0 0 * * * cd /app && /app/checkout.sh $PERIODIC_BUILD_VERSIONS_NUM > /proc/1/fd/1 2>/proc/1/fd/2" \
+RUN echo "0 */3 * * * cd /app && /app/checkout.sh $PERIODIC_BUILD_VERSIONS_NUM > /proc/1/fd/1 2>/proc/1/fd/2" \
         > /etc/crontabs/root && \
     echo "0 1 * * * cd /app && /app/buildCleanup.sh $KEEP_LATEST_VERSIONS_NUM > /proc/1/fd/1 2>/proc/1/fd/2" \
         >> /etc/crontabs/root && \
