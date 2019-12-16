@@ -44,7 +44,15 @@ const appRouter = function (app, gulp) {
       const prebidDownloadFilePath = path.resolve(prebidPath, 'build/dist', fileName);
       console.log(output);
       if(fs.existsSync(prebidDownloadFilePath)) {
-        res.download(prebidDownloadFilePath);
+        res.download(prebidDownloadFilePath, function (err) {
+          if (err) {
+            res.end();
+          } else {
+            fs.unlink(prebidDownloadFilePath, function (err) {
+              if (err) return console.log(err);
+            });
+          }
+        });
       }
       else {
         res.send(JSON.stringify({
@@ -160,9 +168,9 @@ const appRouter = function (app, gulp) {
 
       res.send(JSON.stringify(response));
     })
-    
-  });
-  
+
+});
+
   /**
    * A health monitor endpoint that returns 200 OK.
    */
