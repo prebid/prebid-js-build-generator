@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy a set of Lambda functions, triggers and DynamoDB table to get stats from CloudWatch logs
+Parameters:
+  SourceLogGroup:
+    Type: String
+    Default: /ecs/pbjs-bundle-service-task-def
+    Description: Log group of the ECS service producing data to process
+  LambdaExecutionRole:
+    Type: String
+    Default: PrebidBundlerLambdaRole
+    Description: An IAM role to give the Lambda function, should allow read/write access to DynamoDB table and
+      allow sending email using SES
+  RecipientAddressList:
+    Type: String
+    Description: List of report recpients, comma separated e-mail address list
+  ReportSubject:
+    Type: String
+    Default: PBJS Download stats monthly report
+    Description: Subject of the report e-mail message
+  SourceAddress:
+    Type: String
+    Default: noreply@alerts.prebid.org
+    Description: Source e-mail address to specify in report message
+
+Resources:
+  # Data source
+  StatsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: time_bucket
+          AttributeType: S
+      KeySchema:
+        - AttributeName: time_bucket
+          KeyType: HASH
+      TableName: !Join ['-', [!Ref 'AWS::StackName', 'tbl']]
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+  # Data processing side
+  ProcessingFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: StatsTable
+    Properties:
+      FunctionName: !Join ['-', [!Ref 'AWS::StackName', 'processing-fn']]
+      Handler: statsProcessing.handler
+      Environment:
+        Variables:
+          DYNAMODB_STATS_TABLE: !Join ['-', [!Ref 'AWS::StackName', 'tbl']]
+      Code: ../lambda/
+      Runtime: nodejs12.x
+      Role: !Join ['', [ !Sub 'arn:aws:iam::${AWS::AccountId}:role/', !Ref 'LambdaExecutionRole']]
+  LogsSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      LogGroupName: !Ref SourceLogGroup
+      FilterPattern: 'dataCapture'
+      DestinationArn: !GetAtt ProcessingFunction.Arn
+  InvokeProcessingFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ProcessingFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: !Sub 'logs.${AWS::Region}.amazonaws.com'
+      SourceArn: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${SourceLogGroup}:*'
+#      SourceAccount: !Ref AWS::AccountId
+  # Reporting side
+  ReportingFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: StatsTable
+    Properties:
+      FunctionName: !Join ['-', [!Ref 'AWS::StackName', 'reporting-fn']]
+      Handler: statsReporting.handler
+      Environment:
+        Variables:
+          DYNAMODB_STATS_TABLE: !Join ['-', [!Ref 'AWS::StackName', 'tbl']]
+          RECIPIENT_ADDRESS_LIST: !Ref 'RecipientAddressList'
+          REPORT_SUBJECT: !Ref 'ReportSubject'
+          SOURCE_ADDRESS: !Ref 'SourceAddress'
+      Timeout: 300
+      Code: ../lambda/
+      Runtime: nodejs12.x
+      Role: !Join ['', [ !Sub 'arn:aws:iam::${AWS::AccountId}:role/', !Ref 'LambdaExecutionRole']]
+  ReportingSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Join ['-', [!Ref 'AWS::StackName', 'reporting-rule']]
+      ScheduleExpression: cron(0 3 1 * ? *)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ReportingFunction.Arn
+          Id: !Join ['-', [!Ref 'AWS::StackName', 'reporting-target']]
+  InvokeReportingFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ReportingFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt ReportingSchedule.Arn
