@@ -1,21 +1,21 @@
-"use strict";
+'use strict';
 
-const aws = require("aws-sdk");
+const aws = require('aws-sdk');
 
 const { AWS_REGION, DYNAMODB_STATS_TABLE } = process.env;
 const { RECIPIENT_ADDRESS_LIST, SOURCE_ADDRESS, REPORT_SUBJECT } = process.env;
 
 const dynamoDbRegions = {
-    "us-east-1": true,
-    "us-east-2": true
+    'us-east-1': true,
+    'us-east-2': true
 };
 
 const dynamoDbClient = new aws.DynamoDB.DocumentClient({
-  apiVersion: "2012-10-08",
-  region: dynamoDbRegions[AWS_REGION] ? AWS_REGION : "us-east-1"
+  apiVersion: '2012-10-08',
+  region: dynamoDbRegions[AWS_REGION] ? AWS_REGION : 'us-east-1'
 });
 
-const sesClient = new aws.SES({region: "us-east-1"});
+const sesClient = new aws.SES({region: 'us-east-1'});
 
 exports.handler = async (event) => {
 
@@ -81,7 +81,7 @@ function aggregateCounts(buckets) {
         const currentBucket = nonEmptyBuckets[i];
 
         for(var currentKey in currentBucket) {
-            if(!currentKey.startsWith("version_")) {
+            if(!currentKey.startsWith('version_')) {
                 continue;
             }
 
@@ -98,37 +98,37 @@ function prepareRawReportData(aggregatedCounts) {
     const latestVersionCounts = {};
 
     for(var currentKey in aggregatedCounts) {
-        if(currentKey.endsWith("_count")) {
+        if(currentKey.endsWith('_count')) {
             // key looks like version_XXX_XXX_XXX_count;
             // extract version - remove leading version_ and trailing _count from key and
             // replace underscores with dots
-            const version = currentKey.slice(8).slice(0, -6).replace(/_/gi, ".");
+            const version = currentKey.slice(8).slice(0, -6).replace(/_/gi, '.');
             versionCounts[version] = aggregatedCounts[currentKey];
         }
     }
 
     const latestVersion = Object.keys(versionCounts).sort().reverse()[0];
     if(latestVersion) {
-        const latestVersionPrefix = "version_" + latestVersion.replace(/\./gi, "_") + "_count_";
+        const latestVersionPrefix = 'version_' + latestVersion.replace(/\./gi, '_') + '_count_';
         for(var currentKey in aggregatedCounts) {
             if(currentKey.startsWith(latestVersionPrefix)) {
-                const moduleName = currentKey.replace(latestVersionPrefix, "");
+                const moduleName = currentKey.replace(latestVersionPrefix, '');
                 latestVersionCounts[moduleName] = aggregatedCounts[currentKey];
             }
         }
     }
 
-    return [versionCounts, latestVersionCounts];
+    return [versionCounts, latestVersion, latestVersionCounts];
 }
 
 function sendReport(rawReportData) {
     var params = {
         Destination: {
-            ToAddresses: [RECIPIENT_ADDRESS_LIST]
+            ToAddresses: RECIPIENT_ADDRESS_LIST.split(',').map(address => address.trim())
         },
         Message: {
             Body: {
-                Html: { 
+                Html: {
                     Data: composeReportBody(rawReportData)
                 }
             },
@@ -146,20 +146,21 @@ function sendReport(rawReportData) {
 
 function composeReportBody(rawReportData) {
     const versionCounts = rawReportData[0];
-    const latestVersionCounts = rawReportData[1];
+    const latestVersion = rawReportData[1];
+    const latestVersionCounts = rawReportData[2];
 
     const versionsCells = Object.keys(versionCounts).sort().reverse()
         .map(version => `<tr><td>${version}</td><td>${versionCounts[version]}</td></tr>`)
-        .join("\n");
+        .join('\n');
 
     const latestVersionModulesCells = Object.keys(latestVersionCounts).sort().reverse()
         .map(module => `<tr><td>${module}</td><td>${latestVersionCounts[module]}</td></tr>`)
-        .join("\n");
+        .join('\n');
 
     return `
         <h1>Monthly report</h1>
         <h3>Breakdown by version</h3>
-        <table border="1">
+        <table border='1'>
           <tr>
             <th>Version</th>
             <th>Number of downloads</th>
@@ -168,8 +169,8 @@ function composeReportBody(rawReportData) {
         </table>
 
         <h3>Breakdown by latest version modules</h3>
-        <b>Version: 2.30.0</b>
-        <table border="1">
+        <b>Version: ${latestVersion}</b>
+        <table border='1'>
           <tr>
             <th>Module</th>
             <th>Number of downloads</th>
