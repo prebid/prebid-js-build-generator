@@ -1,10 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Deploy a set of Lambda functions, triggers and DynamoDB table to get stats from CloudWatch logs
 Parameters:
-  SourceLogGroup:
+  ServiceStackName:
     Type: String
-    Default: /ecs/pbjs-bundle-service-task-def
-    Description: Log group of the ECS service producing data to process
+    Default: pbjs-bundler-prod
+    Description: The name of the parent service stack that you created. Necessary
+      to locate and reference resources created by that stack.
   LambdaExecutionRole:
     Type: String
     Default: PrebidBundlerLambdaRole
@@ -53,7 +54,9 @@ Resources:
   LogsSubscriptionFilter:
     Type: AWS::Logs::SubscriptionFilter
     Properties:
-      LogGroupName: !Ref SourceLogGroup
+      LogGroupName:
+        Fn::ImportValue:
+          !Join [':', [!Ref 'ServiceStackName', 'TaskLogGroupName']]
       FilterPattern: 'dataCapture'
       DestinationArn: !GetAtt ProcessingFunction.Arn
   InvokeProcessingFunctionPermission:
@@ -62,8 +65,9 @@ Resources:
       FunctionName: !GetAtt ProcessingFunction.Arn
       Action: 'lambda:InvokeFunction'
       Principal: !Sub 'logs.${AWS::Region}.amazonaws.com'
-      SourceArn: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:${SourceLogGroup}:*'
-#      SourceAccount: !Ref AWS::AccountId
+      SourceArn:
+        Fn::ImportValue:
+          !Join [':', [!Ref 'ServiceStackName', 'TaskLogGroupArn']]
   # Reporting side
   ReportingFunction:
     Type: AWS::Lambda::Function
@@ -77,6 +81,7 @@ Resources:
           RECIPIENT_ADDRESS_LIST: !Ref 'RecipientAddressList'
           REPORT_SUBJECT: !Ref 'ReportSubject'
           SOURCE_ADDRESS: !Ref 'SourceAddress'
+      MemorySize: 256
       Timeout: 300
       Code: ../lambda/
       Runtime: nodejs12.x

@@ -27,10 +27,6 @@ Parameters:
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
     Description: Name of an existing EC2 KeyPair to enable SSH access to the ECS instances
-  TaskName:
-    Type: String
-    Default: pbjs-bundle-service-task-def
-    Description: A name for the task definition
   ApiContainerName:
     Type: String
     Default: api
@@ -39,10 +35,6 @@ Parameters:
     Type: String
     Default: builder
     Description: A name for the builder container
-  ServiceName:
-    Type: String
-    Default: pbjs-bundle-service-service
-    Description: A name for the service
   ApiImageUrl:
     Type: String
     Default: prebid/pbjs-bundle-service-api:latest
@@ -292,13 +284,13 @@ Resources:
   TaskCloudWatchLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Join ['', ['/ecs/', !Ref 'TaskName']]
+      LogGroupName: !Join ['', ['/ecs/', !Join ['-', [!Ref 'AWS::StackName', 'task-def']]]]
       RetentionInDays: 365
 
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: !Ref 'TaskName'
+      Family: !Join ['-', [!Ref 'AWS::StackName', 'task-def']]
       Cpu: !Ref 'TaskCpu'
       Memory: !Ref 'TaskMemory'
       NetworkMode: awsvpc
@@ -358,7 +350,7 @@ Resources:
     DependsOn:
       - HttpListener
     Properties:
-      ServiceName: !Ref 'ServiceName'
+      ServiceName: !Join ['-', [!Ref 'AWS::StackName', 'service']]
       Cluster:
         Fn::ImportValue:
           !Join [':', [!Ref 'NetworkStackName', 'ClusterName']]
@@ -394,3 +386,13 @@ Outputs:
   ExternalUrl:
     Description: The url of the load balancer
     Value: !Join ['', ['http://', !GetAtt 'ALB.DNSName']]
+  TaskLogGroupName:
+    Description: The name of the Task CloudWatch Log Group
+    Value: !Ref TaskCloudWatchLogGroup
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'TaskLogGroupName' ] ]
+  TaskLogGroupArn:
+    Description: The ARN of the Task CloudWatch Log Group
+    Value: !GetAtt TaskCloudWatchLogGroup.Arn
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'TaskLogGroupArn' ] ]

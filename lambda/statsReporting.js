@@ -43,26 +43,19 @@ function currentMonthStart() {
     // get current time, zero out minutes and hours, set first day of the month 
     // to get midnight of the first day of current month
     const date = new Date();
-    // FIXME
-    date.setUTCMonth(11);
-    date.setUTCDate(27);
 
     date.setUTCMinutes(0,0,0);
     date.setUTCHours(0);
-    // date.setUTCDate(1);
+    date.setUTCDate(1);
 
     return date.getTime();
 }
 
 function previousMonthStart() {
     // get current month start, move one day back and set first day of the month
-    // const date = new Date(currentMonthStart());
-    // date.setUTCDate(0);
-    // date.setUTCDate(1);
-
-    // FIXME
     const date = new Date(currentMonthStart());
-    date.setUTCDate(22);
+    date.setUTCDate(0); // days start at 1, so 0 means one day backwards
+    date.setUTCDate(1);
 
     return date.getTime();
 }
