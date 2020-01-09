@@ -18,3 +18,7 @@ run `./chekcout.sh ${num_previous_ver}` to checkout prebid.js and build the file
 
 ### Run
 `node app.js`
+
+### Other documentation
+Refer to [docs](docs) directory for [packaging](docs/packaging.md), [deployment](docs/deployment.md) and 
+[operations](docs/operations.md) guides.

@@ -135,32 +135,34 @@ Parameters:
     Description: How much memory in megabytes to give the container
   DesiredCount:
     Type: Number
-    Default: 2
+    Default: 1
     Description: How many copies of the service task to run
   TaskExecutionRole:
     Type: String
     Default: ecsTaskExecutionRole
     Description: An IAM role to give the tasks for pulling and container images and publishing container logs to Amazon
       CloudWatch
+  LoadBalancerCertificateId:
+    Type: String
+    Default: ''
+    Description: Id of the pre-uploaded (or pre-requested) SSL certificate from ACM (Amazon Certificate Manager).
+      That is, it is a last part of the Certificate ARN, for example "arn:aws:acm:us-east-1:123456789123:certificate/>this_is_the_id<"
 
-Mappings:
-  Subnets:
-    VPC:
-      ALBName: 'pbjs-bundle-service-alb'
-      TargetGroupName: 'pbjs-bundle-service-target-group'
+Conditions:
+  HasLoadBalancerCertificateId: !Not [!Equals [!Ref LoadBalancerCertificateId, '']]
 
 Resources:
-  # Container instances
-  ContainerInstanceOne:
-    Type: AWS::EC2::Instance
+  # Auto scaling group
+  LaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
+      LaunchConfigurationName: !Join ['-', [!Ref 'AWS::StackName', 'lc']]
       ImageId: !Ref ECSAMI
       KeyName: !Ref KeyName
       InstanceType: !Ref InstanceType
       IamInstanceProfile: !Ref EcsInstanceRole
-      SubnetId:
-        Fn::ImportValue:
-          !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetOne']]
+      SecurityGroups:
+        - !Ref InstanceSecurityGroup
       UserData:
         Fn::Base64: !Sub
           - |
@@ -171,26 +173,31 @@ Resources:
           - ECSCluster:
               Fn::ImportValue:
                 !Join [':', [!Ref 'NetworkStackName', 'ClusterName']]
-  ContainerInstanceTwo:
-    Type: AWS::EC2::Instance
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      ImageId: !Ref ECSAMI
-      KeyName: !Ref KeyName
-      InstanceType: !Ref InstanceType
-      IamInstanceProfile: !Ref EcsInstanceRole
-      SubnetId:
+      AutoScalingGroupName: !Join ['-', [!Ref 'AWS::StackName', 'asg']]
+      LaunchConfigurationName: !Ref LaunchConfig
+      DesiredCapacity: !Ref DesiredCount
+      MinSize: !Ref DesiredCount
+      MaxSize: 4
+      VPCZoneIdentifier:
+        - Fn::ImportValue:
+            !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetOne']]
+        - Fn::ImportValue:
+            !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetTwo']]
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SSH access to instances of auto-scaling group
+      VpcId:
         Fn::ImportValue:
-          !Join [':', [!Ref 'NetworkStackName', 'PublicSubnetTwo']]
-      UserData:
-        Fn::Base64: !Sub
-          - |
-            #!/bin/bash
-            # Set any ECS agent configuration options
-            echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
-            echo 'ECS_INSTANCE_ATTRIBUTES={"app":"pbjs-bundle-service"}' >> /etc/ecs/ecs.config
-          - ECSCluster:
-              Fn::ImportValue:
-                !Join [':', [!Ref 'NetworkStackName', 'ClusterName']]
+          !Join [':', [!Ref 'NetworkStackName', 'VPCId']]
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
 
   # Load Balancer
   ALBSG:
@@ -205,6 +212,10 @@ Resources:
           IpProtocol: tcp
           FromPort: 80
           ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
   ALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -220,23 +231,24 @@ Resources:
       SecurityGroups: [!Ref 'ALBSG']
       Tags:
         - Key: 'Name'
-          Value: !FindInMap ['Subnets', 'VPC', 'ALBName']
+          Value: !Join ['-', [!Ref 'AWS::StackName', 'alb']]
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckPath: /health
       HealthCheckProtocol: HTTP
-      Name: !FindInMap ['Subnets', 'VPC', 'TargetGroupName']
+      Name: !Join ['-', [!Ref 'AWS::StackName', 'tg']]
       Port: 80
       Protocol: HTTP
       TargetType: ip
       VpcId:
         Fn::ImportValue:
           !Join [':', [!Ref 'NetworkStackName', 'VPCId']]
-  ALBListener:
+  HttpListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     DependsOn:
       - ALB
+      - TargetGroup
     Properties:
       DefaultActions:
         - Type: forward
@@ -244,6 +256,21 @@ Resources:
       LoadBalancerArn: !Ref ALB
       Port: 80
       Protocol: HTTP
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: HasLoadBalancerCertificateId
+    DependsOn:
+      - ALB
+      - TargetGroup
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref ALB
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Join ['', [ !Sub 'arn:aws:acm:${AWS::Region}:${AWS::AccountId}:certificate/', !Ref LoadBalancerCertificateId]]
 
   # Security Group for ECS Tasks
   ECSContainerSG:
@@ -302,6 +329,13 @@ Resources:
           Cpu: !Ref 'BuilderContainerCpu'
           Memory: !Ref 'BuilderContainerMemory'
           Image: !Ref 'BuilderImageUrl'
+          Environment:
+            - Name: PERIODIC_BUILD_VERSIONS_NUM
+              Value: 5
+            - Name: INITIAL_BUILD_VERSIONS_NUM
+              Value: 20
+            - Name: KEEP_LATEST_VERSIONS_NUM
+              Value: 20
           MountPoints:
             - SourceVolume: build-cache-volume
               ContainerPath: /app/prebid.js
@@ -322,9 +356,7 @@ Resources:
   Service:
     Type: AWS::ECS::Service
     DependsOn:
-      - ContainerInstanceOne
-      - ContainerInstanceTwo
-      - ALBListener
+      - HttpListener
     Properties:
       ServiceName: !Ref 'ServiceName'
       Cluster:
