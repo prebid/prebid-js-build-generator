@@ -1,6 +1,5 @@
 .*
 README.md
-*.sh
-!checkout.sh
+startup.sh
 todo.txt
 docker
