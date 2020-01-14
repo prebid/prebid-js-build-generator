@@ -27,7 +27,7 @@ exports.handler = async (event) => {
 
 function decompressMessages(data) {
     return new Promise((resolve, reject) => {
-        zlib.gunzip(new Buffer(data, 'base64'), (error, buffer) => {
+        zlib.gunzip(Buffer.from(data, 'base64'), (error, buffer) => {
             if (error) {
                 reject(error);
             } else {
@@ -43,7 +43,7 @@ function decompressMessages(data) {
 function processMessages(messages) {
     const updatePromises = messages.map(message => {
         const parsedMessage = parseMessage(message);
-        return updateCounters(parsedMessage[0], parsedMessage[1], parsedMessage[2]);
+        return updateCounters(parsedMessage[0], parsedMessage[1], parsedMessage[2], parsedMessage[3]);
     });
 
     return Promise.all(updatePromises);
@@ -51,7 +51,7 @@ function processMessages(messages) {
 
 function parseMessage(message) {
     const fields = message.split(',');
-    if(fields.length != 5) {
+    if(fields.length != 6) {
         console.error('Unexpected log message format: "%s"', message);
         return;
     }
@@ -59,25 +59,28 @@ function parseMessage(message) {
     const timestamp = fields[1];
     const version = fields[2];
     const modules = fields[3].split(';');
+    const isLatestVersion = fields[4] == 'latest';
 
     const hourBucket = new Date(+timestamp).setMinutes(0,0,0);
 
-    return [hourBucket, version, modules];
+    return [hourBucket, version, modules, isLatestVersion];
 }
 
-function updateCounters(hourBucket, version, modules) {
+function updateCounters(hourBucket, version, modules, isLatestVersion) {
     const versionPrefix = `version_${version.replace(/\./gi, '_')}`;
 
+    const updateVersionClause = `${versionPrefix}_count = if_not_exists(${versionPrefix}_count, :zero) + :val`;
     const updateModulesClause = modules
         .map(module => `${versionPrefix}_count_${module} = if_not_exists(${versionPrefix}_count_${module}, :zero) + :val`)
         .join(', ');
+    const updateLatestVersionClause = isLatestVersion ? ',latest_count = if_not_exists(latest_count, :zero) + :val' : '';
 
     return dynamoDbClient.update({
         TableName: DYNAMODB_STATS_TABLE,
         Key: {
             time_bucket: `bucket#${hourBucket}`
         },
-        UpdateExpression: `set ${versionPrefix}_count = if_not_exists(${versionPrefix}_count, :zero) + :val,${updateModulesClause}`,
+        UpdateExpression: `set ${updateVersionClause},${updateModulesClause}${updateLatestVersionClause}`,
         ExpressionAttributeValues:{
             ':zero': 0,
             ':val': 1
