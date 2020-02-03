@@ -44,14 +44,27 @@ ECS Task Definition and ECS Service.
 This project contains [AWS CloudFormation](https://aws.amazon.com/cloudformation/) templates allowing to create all these 
 resource easily with a few clicks. These templates are located in [cloudformation](../cloudformation) directory.
 
+All the resources are broken into three groups. [First group](../cloudformation/network.yaml) contains all the network 
+resources (VPC, Subnets) and ECS Cluster. [Second group](../cloudformation/service.yaml) contains ECS Task Definition, 
+Service, Auto Scaling Group and ALB. [Third group](../cloudformation/stats.yaml) contains Lambda functions and DynamoDB 
+table.
+
 In order to start the process of resources creation using these templates they should be stored in S3 bucket first. You 
 may do this manually or let AWS do this for you, in the latter case a new S3 bucket will be created with a generated name 
 and the templates will be uploaded in it under the covers. It will be assumed further that a S3 bucket was created 
 manually and templates were uploaded there beforehand.
 
-All the resources are broken into two groups. [First group](../cloudformation/network.yaml) contains all the network 
-resources (VPC, Subnets) and ECS Cluster. [Second group](../cloudformation/service.yaml) contains ECS Task Definition, 
-Service, Auto Scaling Group and ALB.
+[Stats template](../cloudformation/stats.yaml) is a bit different from others because it contains references to Lambda 
+functions code that should be packaged and uploaded to S3 bucket and template itself have to be updated with the S3 
+bucket and code package location before it could be used. Fortunately this is a one step action, just run the following 
+command to get code packaged and uploaded and template updated:
+```shell script
+aws cloudformation package --template-file cloudformation/stats.yaml --s3-bucket <bucket_name> --s3-prefix <directory_path> --output-template-file cloudformation/stats-packaged.yaml
+```
+
+After running this command you will find a code package at `<bucket_name>/<directory_path>` on S3 and an updated template 
+`cloudformation/stats-packaged.yaml` pointing to the uploaded code package, now you can use it to create resources as 
+described below.
 
 At first create the network stack:
 - Initiate CloudFormation stack creation
@@ -71,7 +84,18 @@ After that create the service stack:
   - Key Name - Name of an existing EC2 KeyPair to enable SSH access to the ECS instances
 - Wait until all the resources are provisioned
 
-Once both stacks are created application should be up and running, it could be accessed by ALB DNS name that is found on 
+Finally create the stats stack:
+- Initiate CloudFormation stack creation
+- Pick a decent name for the stack, for example `pbjs-bundler-stats-prod`
+- Fill in desired input parameters, most notable and important of them are:
+  - Service Stack Name - specify the name of the service stack created previously, for example `pbjs-bundler-prod`
+  - Recipient Address List - comma-separated list of e-mail addresses where monthly report should be sent (must be 
+  verified in Amazon SES or belong to verified domain)
+  - Source Address - e-mail address that should be specified in From: field of the monthly report messages (must be 
+  verified in Amazon SES or belong to verified domain)
+- Wait until all the resources are provisioned
+
+Once all stacks are created application should be up and running, it could be accessed by ALB DNS name that is found on 
 the Outputs tab of the service stack as `ExternalUrl`.
 
 ## Set up sub-domain

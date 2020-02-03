@@ -36,7 +36,7 @@ const appRouter = function (app, gulp) {
     });
     // for logging CSV
     logModules = modulesListStr.replace(/,/g, ';');
-    logInfo(req.body.version, logModules);
+    logInfo(req.body.version, logModules, isVersionLatest(req.body.version));
    
     // generate file from command line
     // gulp bundle --modules ${module_list} --bundleName prebid.${uuid}.js
@@ -63,6 +63,11 @@ const appRouter = function (app, gulp) {
       }
       
     })
+
+    function isVersionLatest(version) {
+      const prebidVersions = cache.get(cacheKey);
+      return prebidVersions && version == prebidVersions[0] ? 'latest' : '';
+    }
   });
 
   /**
