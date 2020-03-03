@@ -58,7 +58,8 @@ function parseMessage(message) {
 
     const timestamp = fields[1];
     const version = fields[2];
-    const modules = fields[3].split(';');
+    const originalModules = fields[3].split(';');
+    const modules = originalModules.filter((a,b) => originalModules.indexOf(a) === b); // deduplicate modules
     const isLatestVersion = fields[4] == 'latest';
 
     const hourBucket = new Date(+timestamp).setMinutes(0,0,0);
