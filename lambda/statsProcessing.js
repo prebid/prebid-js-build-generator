@@ -58,7 +58,10 @@ function parseMessage(message) {
 
     const timestamp = fields[1];
     const version = fields[2];
-    const modules = fields[3].split(';');
+    const originalModules = fields[3].split(';');
+    const modules = originalModules
+        .filter((a,b) => originalModules.indexOf(a) === b) // deduplicate modules
+        .map(module => module.replace(/[\-\.]/gi, '_'));
     const isLatestVersion = fields[4] == 'latest';
 
     const hourBucket = new Date(+timestamp).setMinutes(0,0,0);
@@ -69,23 +72,46 @@ function parseMessage(message) {
 function updateCounters(hourBucket, version, modules, isLatestVersion) {
     const versionPrefix = `version_${version.replace(/\./gi, '_')}`;
 
-    const updateVersionClause = `${versionPrefix}_count = if_not_exists(${versionPrefix}_count, :zero) + :val`;
-    const updateModulesClause = modules
-        .map(module => `${versionPrefix}_count_${module} = if_not_exists(${versionPrefix}_count_${module}, :zero) + :val`)
+    // create a batch of general counters
+    const generalCounterBatch = [`${versionPrefix}_count`];
+    if(isLatestVersion) {
+        generalCounterBatch.push('latest_count');
+    }
+
+    // calculate adapter counters
+    const adapterCounters = modules.map(module => `${versionPrefix}_count_${module}`);
+
+    // create aggregated list of batches
+    const aggregatedCounterBatches = [generalCounterBatch].concat(splitArrayToChunks(adapterCounters, 20));
+
+    const updatePromises = aggregatedCounterBatches.map(counterBatch => updateBucketCounters(hourBucket, counterBatch));
+
+    return Promise.all(updatePromises);
+}
+
+function splitArrayToChunks(array, chunk_size) {
+    return Array(Math.ceil(array.length / chunk_size))
+                .fill()
+                .map((_, index) => index * chunk_size)
+                .map(begin => array.slice(begin, begin + chunk_size));
+}
+
+function updateBucketCounters(hourBucket, counters) {
+    const updateCountersClause = counters
+        .map(counter => `${counter} = if_not_exists(${counter}, :zero) + :val`)
         .join(', ');
-    const updateLatestVersionClause = isLatestVersion ? ',latest_count = if_not_exists(latest_count, :zero) + :val' : '';
 
     return dynamoDbClient.update({
         TableName: DYNAMODB_STATS_TABLE,
-        Key: {
-            time_bucket: `bucket#${hourBucket}`
-        },
-        UpdateExpression: `set ${updateVersionClause},${updateModulesClause}${updateLatestVersionClause}`,
-        ExpressionAttributeValues:{
-            ':zero': 0,
-            ':val': 1
-        },
-        ReturnValues: 'NONE'
-    })
-    .promise();
+           Key: {
+               time_bucket: `bucket#${hourBucket}`
+           },
+           UpdateExpression: `set ${updateCountersClause}`,
+           ExpressionAttributeValues:{
+               ':zero': 0,
+               ':val': 1
+           },
+           ReturnValues: 'NONE'
+       })
+       .promise()
 }
