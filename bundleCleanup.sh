@@ -1,28 +1,36 @@
 #!/bin/bash
 
-BUNDLE_LIFE_PERIOD="$1"
+shopt -s nullglob
 
-if [ $BUNDLE_LIFE_PERIOD -gt 0 ]; then
-  echo "deleting bundles older than $BUNDLE_LIFE_PERIOD seconds"
-else
-  BUNDLE_LIFE_PERIOD=300
-  echo "deleting bundles older than $BUNDLE_LIFE_PERIOD seconds"
+if [[ "$1" -gt 0 ]]; then
+  CLEANUP_BUNDLES_OLDER_THAN_SECONDS="$1"
+elif [[ ! "CLEANUP_BUNDLES_OLDER_THAN_SECONDS" -gt 0 ]]; then
+  CLEANUP_BUNDLES_OLDER_THAN_SECONDS=2
 fi
+
+echo "=====> Deleting bundles older than $CLEANUP_BUNDLES_OLDER_THAN_SECONDS seconds"
 
 CURRENT_TIME=$(date +%s)
 
-for DIR in prebid.js/prebid_*;
-  do
-    echo "checking $DIR"
-    BUNDLE_DIR="${DIR}/build/dist/prebid.*.js"
-    for FILE in $BUNDLE_DIR;
-      do
-      FILE_LAST_MODIFIED=$(stat -c%Y $FILE)
-        if [ "$(($CURRENT_TIME-$FILE_LAST_MODIFIED))" -gt $BUNDLE_LIFE_PERIOD ]; then
-        echo "deleting file $FILE"
-        rm -f $FILE
-        fi
-      done
-    done
+for DIR in prebid.js/prebid_*; do
+  BUNDLE_DIR="$DIR/build/dist"
 
-echo "Bundles clean up complete"
+  echo "Checking $BUNDLE_DIR"
+
+  if [[ ! -d "$BUNDLE_DIR" ]]; then
+    echo "$BUNDLE_DIR does not exist, skipping"
+    continue
+  fi
+
+  for FILE in "$BUNDLE_DIR"/prebid.*.js; do
+    FILE_LAST_MODIFIED=$(stat -c%Y "$FILE")
+    FILE_AGE=$((CURRENT_TIME - FILE_LAST_MODIFIED))
+
+    if [[ "$FILE_AGE" -gt $CLEANUP_BUNDLES_OLDER_THAN_SECONDS ]]; then
+      echo "Deleting file $FILE"
+      rm -f "$FILE"
+    fi
+  done
+done
+
+echo "=====> Bundles clean up complete"

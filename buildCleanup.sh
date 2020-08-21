@@ -1,27 +1,23 @@
 #!/bin/bash
 
-NUMBER_OF_LATEST_VERSIONS="$1"
-
-if [ $NUMBER_OF_LATEST_VERSIONS -gt 0 ]; then
-  echo "deleting prebid files older than last $NUMBER_OF_LATEST_VERSIONS versions"
-else
-  NUMBER_OF_LATEST_VERSIONS=20
-  echo "deleting prebid files older than last $NUMBER_OF_LATEST_VERSIONS versions"
+if [[ "$1" -gt 0 ]]; then
+  NUMBER_OF_PREVIOUS_VERSIONS="$1"
+elif [[ ! "$NUMBER_OF_PREVIOUS_VERSIONS" -gt 0 ]]; then
+  NUMBER_OF_PREVIOUS_VERSIONS=2
 fi
 
-cd prebid.js
+echo "=====> Deleting old versions, number of versions to keep is $NUMBER_OF_PREVIOUS_VERSIONS"
 
-VERSION_DIRECTORIES="$(ls -d prebid_* | sort -r)"
+VERSION_DIRECTORIES="$(ls -d prebid.js/prebid_* | sort -rV)"
 
 ITERATION=0
-for DIR in $VERSION_DIRECTORIES;
-  do
-    if [ $ITERATION -lt $NUMBER_OF_LATEST_VERSIONS ]; then
-      ITERATION=$[ITERATION+1]
-      continue
-    fi
-  echo "deleting directory $DIR"
-  rm -rf $DIR
-  done
+for DIR in $VERSION_DIRECTORIES; do
+  if [[ "$ITERATION" -lt "$NUMBER_OF_PREVIOUS_VERSIONS" ]]; then
+    ITERATION=$((ITERATION + 1))
+    continue
+  fi
+  echo "Deleting directory $DIR"
+  rm -rf "$DIR"
+done
 
-echo "Versions clean up complete"
+echo "=====> Old versions clean up complete"

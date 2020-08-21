@@ -8,8 +8,9 @@ Parameters:
       to locate and reference resources created by that stack.
   ECSAMI:
     Description: AMI ID
-    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+    Type: AWS::EC2::Image::Id
+#    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+#    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
   InstanceType:
     Description: EC2 instance type
     Type: String
@@ -322,11 +323,7 @@ Resources:
           Memory: !Ref 'BuilderContainerMemory'
           Image: !Ref 'BuilderImageUrl'
           Environment:
-            - Name: PERIODIC_BUILD_VERSIONS_NUM
-              Value: 5
-            - Name: INITIAL_BUILD_VERSIONS_NUM
-              Value: 20
-            - Name: KEEP_LATEST_VERSIONS_NUM
+            - Name: NUMBER_OF_PREVIOUS_VERSIONS
               Value: 20
           MountPoints:
             - SourceVolume: build-cache-volume

@@ -18,7 +18,7 @@ services:
     volumes:
       - build-cache-volume:/app/prebid.js
     environment:
-      INITIAL_BUILD_VERSIONS_NUM: 2
+      NUMBER_OF_PREVIOUS_VERSIONS: 2
     init: true
 volumes:
   build-cache-volume:
