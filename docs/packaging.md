@@ -11,7 +11,15 @@ Alternatively you can use a helper script for this purpose (should be run from t
 docker/build.sh
 ```
 
-This will build the images locally and tag them as `latest`.
+This will build the images locally and tag them as `latest`. To use a different tag, run:
+```shell script
+docker/build.sh <TAG>
+```
+
+Note that:
+
+- The "dev" stack (ECS cluster "prebid-network-dev-ecs-cluster") is configured to use the "dev" tag;
+- The "prod" stack (ECS cluster "prebid-network-prod-ecs-cluster") is configured to use the "latest" tag.
 
 ## Docker images description
 [Builder](../docker/Dockerfile.builder) image has cron installed and crontab configured to run: 
