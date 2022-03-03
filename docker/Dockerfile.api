@@ -1,9 +1,9 @@
-FROM node:10-alpine AS build
+FROM node:12-alpine AS build
 
 COPY package*.json ./
 RUN npm install --production
 
-FROM node:10-alpine
+FROM node:12-alpine
 
 RUN npm install -g gulp gulp-cli
 

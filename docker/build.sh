@@ -1,5 +1,10 @@
 #!/bin/bash
-set -x
+TAG="$1"
 
-docker build -t prebid/pbjs-bundle-service-api:latest -f docker/Dockerfile.api .
-docker build -t prebid/pbjs-bundle-service-builder:latest -f docker/Dockerfile.builder .
+if [ -z "$TAG" ]; then
+  TAG="latest"
+fi
+
+set -x
+docker build -t prebid/pbjs-bundle-service-api:"$TAG" -f docker/Dockerfile.api .
+docker build -t prebid/pbjs-bundle-service-builder:"$TAG" -f docker/Dockerfile.builder .

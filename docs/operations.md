@@ -86,8 +86,8 @@ Scaling service down involves following actions in AWS Console:
 
 ## Application redeployment
 
-To keep things simple there will be only one tag for images - `latest`, i.e. no versioning support.
+To keep things simple there will be only one tag for images - `latest` for prod, `dev` for dev, i.e. no versioning support.
 
 In order to update the application:
-1. Build the new version of the Docker images, tag them with `latest` tag and push to the ECR repositories
+1. Build the new version of the Docker images, tag them with `latest` (or `dev`) tag and push to the ECR repositories
 2. Stop ECS Tasks one by one - ECS will start a new Task instead of each stopped one that will cause new images to be pulled
