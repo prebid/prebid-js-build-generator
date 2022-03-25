@@ -14,7 +14,7 @@ Parameters:
   InstanceType:
     Description: EC2 instance type
     Type: String
-    Default: t2.micro
+    Default: t2.medium
     AllowedValues: [t2.micro, t2.small, t2.medium, t2.large, m3.medium, m3.large,
       m3.xlarge, m3.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge, m4.10xlarge,
       c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge, c3.large, c3.xlarge,
@@ -50,35 +50,9 @@ Parameters:
     Type: Number
     Default: 3000
     Description: What port number the application inside the docker container is binding to
-  TaskCpu:
-    Type: Number
-    Default: 1024
-    AllowedValues:
-      - 256
-      - 512
-      - 1024
-      - 2048
-      - 4096
-    Description: How much CPU to give the task. 1024 is 1 CPU
-  TaskMemory:
-    Type: Number
-    Default: 980
-    AllowedValues:
-      - 512
-      - 980
-      - 1024
-      - 2048
-      - 3072
-      - 4096
-      - 5120
-      - 6144
-      - 7168
-      - 8192
-      - 16384
-    Description: How much memory in megabytes to give the task
   ApiContainerCpu:
     Type: Number
-    Default: 512
+    Default: 1024
     AllowedValues:
       - 256
       - 512
@@ -88,7 +62,7 @@ Parameters:
     Description: How much CPU to give the container. 1024 is 1 CPU
   BuilderContainerCpu:
     Type: Number
-    Default: 512
+    Default: 1024
     AllowedValues:
       - 256
       - 512
@@ -113,7 +87,7 @@ Parameters:
     Description: How much memory in megabytes to give the container
   BuilderContainerMemory:
     Type: Number
-    Default: 512
+    Default: 3072
     AllowedValues:
       - 512
       - 1024
@@ -149,7 +123,7 @@ Resources:
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      LaunchConfigurationName: !Join ['-', [!Ref 'AWS::StackName', 'lc']]
+      LaunchConfigurationName: !Join ['-', [!Ref 'AWS::StackName', 'lc2']]
       ImageId: !Ref ECSAMI
       KeyName: !Ref KeyName
       InstanceType: !Ref InstanceType
@@ -292,8 +266,6 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: !Join ['-', [!Ref 'AWS::StackName', 'task-def']]
-      Cpu: !Ref 'TaskCpu'
-      Memory: !Ref 'TaskMemory'
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - EC2

@@ -91,3 +91,7 @@ To keep things simple there will be only one tag for images - `latest` for prod,
 In order to update the application:
 1. Build the new version of the Docker images, tag them with `latest` (or `dev`) tag and push to the ECR repositories
 2. Stop ECS Tasks one by one - ECS will start a new Task instead of each stopped one that will cause new images to be pulled
+
+**Note**: ECS service deployments will not complete if they run on only one task (as they cannot be done safely). 
+To redeploy to a single host, or to replace the host (for example when moving to a bigger instance type), it's necessary 
+to update both the ECS task definition's and the ASG's desired count to 0 - to take the old host out of service - then back to 1.
