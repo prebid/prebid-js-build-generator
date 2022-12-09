@@ -10,7 +10,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "body-parser": "^1.15.0",
-    "express": "^4.13.4",
+    "express": "^4.17.3",
     "gulp": "^3.9.1",
     "node-cache": "^4.2.0",
     "semver-regex": "^2.0.0",
