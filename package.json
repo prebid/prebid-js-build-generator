@@ -13,7 +13,7 @@
     "express": "^4.13.4",
     "gulp": "^3.9.1",
     "node-cache": "^4.2.0",
-    "semver-regex": "^2.0.0",
+    "semver-regex": "^3.1.4",
     "semver-sort": "0.0.4"
   }
 }
