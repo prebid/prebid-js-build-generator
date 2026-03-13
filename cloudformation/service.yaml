@@ -120,31 +120,35 @@ Conditions:
 
 Resources:
   # Auto scaling group
-  LaunchConfig:
-    Type: AWS::AutoScaling::LaunchConfiguration
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchConfigurationName: !Join ['-', [!Ref 'AWS::StackName', 'lc2']]
-      ImageId: !Ref ECSAMI
-      KeyName: !Ref KeyName
-      InstanceType: !Ref InstanceType
-      IamInstanceProfile: !Ref EcsInstanceRole
-      SecurityGroups:
-        - !Ref InstanceSecurityGroup
-      UserData:
-        Fn::Base64: !Sub
-          - |
-            #!/bin/bash
-            # Set any ECS agent configuration options
-            echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
-            echo 'ECS_INSTANCE_ATTRIBUTES={"app":"pbjs-bundle-service"}' >> /etc/ecs/ecs.config
-          - ECSCluster:
-              Fn::ImportValue:
-                !Join [':', [!Ref 'NetworkStackName', 'ClusterName']]
+      LaunchTemplateName: !Join ['-', [!Ref 'AWS::StackName', 'lc2']]
+      LaunchTemplateData:
+        ImageId: !Ref ECSAMI
+        KeyName: !Ref KeyName
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Name: !Ref EcsInstanceRole
+        SecurityGroupIds:
+          - !Ref InstanceSecurityGroup
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              #!/bin/bash
+              # Set any ECS agent configuration options
+              echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+              echo 'ECS_INSTANCE_ATTRIBUTES={"app":"pbjs-bundle-service"}' >> /etc/ecs/ecs.config
+            - ECSCluster:
+                Fn::ImportValue:
+                  !Join [':', [!Ref 'NetworkStackName', 'ClusterName']]
   AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       AutoScalingGroupName: !Join ['-', [!Ref 'AWS::StackName', 'asg']]
-      LaunchConfigurationName: !Ref LaunchConfig
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
       DesiredCapacity: !Ref DesiredCount
       MinSize: !Ref DesiredCount
       MaxSize: 4
