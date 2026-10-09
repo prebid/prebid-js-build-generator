@@ -55,6 +55,7 @@ const appRouter = function (app, gulp) {
         });
       }
       else {
+        res.status(500);
         res.send(JSON.stringify({
             error : 'Prebid file not built properly',
             requestId : requestId
