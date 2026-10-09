@@ -32,7 +32,7 @@ for TAG in $(git tag --sort=-creatordate | head -n "$NUMBER_OF_PREVIOUS_VERSIONS
     cp -R ../working_master "$DIR_NAME"
     cd "$DIR_NAME"
     git checkout "${TAG}"
-    npm install
+    PUPPETEER_SKIP_DOWNLOAD=1 npm install
     gulp build
     echo "$DIR_NAME installed"
   fi

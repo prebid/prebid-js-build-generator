@@ -22,7 +22,8 @@ repositories to make them available for deployment.
 In order to be able to push to repositories you must log in into ECR first. In order to do that run the following 
 commands (it will require AWS credentials set up properly):
 ```shell script
-$(aws ecr get-login --no-include-email)
+aws ecr get-login-password | docker login --username AWS --password-stdin <aws_account_id>.dkr.ecr.<aws_region>.amazonaws.com/prebid/pbjs-bundle-service-api
+aws ecr get-login-password | docker login --username AWS --password-stdin <aws_account_id>.dkr.ecr.<aws_region>.amazonaws.com/prebid/pbjs-bundle-service-builder
 ```
 
 After that you will be able to push the images to corresponding repositories:
