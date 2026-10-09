@@ -22,17 +22,17 @@ repositories to make them available for deployment.
 In order to be able to push to repositories you must log in into ECR first. In order to do that run the following 
 commands (it will require AWS credentials set up properly):
 ```shell script
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 484002768965.dkr.ecr.us-east-1.amazonaws.com/prebid/pbjs-bundle-service-api
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 484002768965.dkr.ecr.us-east-1.amazonaws.com/prebid/pbjs-bundle-service-builder
+aws ecr get-login-password | docker login --username AWS --password-stdin <aws_account_id>.dkr.ecr.<aws_region>.amazonaws.com/prebid/pbjs-bundle-service-api
+aws ecr get-login-password | docker login --username AWS --password-stdin <aws_account_id>.dkr.ecr.<aws_region>.amazonaws.com/prebid/pbjs-bundle-service-builder
 ```
 
 After that you will be able to push the images to corresponding repositories:
 ```shell script
-docker tag prebid/pbjs-bundle-service-api:latest 484002768965.dkr.ecr.us-east-1.amazonaws.com/prebid/pbjs-bundle-service-api:latest
-docker push 484002768965.dkr.ecr.us-east-1.amazonaws.com/prebid/pbjs-bundle-service-api:latest
+docker tag prebid/pbjs-bundle-service-api:latest <aws_account_id>.dkr.ecr.<aws_region>.amazonaws.com/prebid/pbjs-bundle-service-api:latest
+docker push <aws_account_id>.dkr.ecr.<aws_region>.amazonaws.com/prebid/pbjs-bundle-service-api:latest
 
-docker tag prebid/pbjs-bundle-service-builder:latest 484002768965.dkr.ecr.us-east-1.amazonaws.com/prebid/pbjs-bundle-service-builder:latest
-docker push 484002768965.dkr.ecr.us-east-1.amazonaws.com/prebid/pbjs-bundle-service-builder:latest
+docker tag prebid/pbjs-bundle-service-builder:latest <aws_account_id>.dkr.ecr.<aws_region>.amazonaws.com/prebid/pbjs-bundle-service-builder:latest
+docker push <aws_account_id>.dkr.ecr.<aws_region>.amazonaws.com/prebid/pbjs-bundle-service-builder:latest
 ```
 
 After this step you should be able to see the images in ECR in AWS Console.
